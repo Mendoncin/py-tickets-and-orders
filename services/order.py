@@ -3,28 +3,21 @@ from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import QuerySet
-from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from db.models import MovieSession, Order, Ticket
 
 
-User = get_user_model()
-
-
 def _prepare_date(date: str | datetime) -> datetime:
     if isinstance(date, datetime):
-        parsed_date = date
-    else:
-        parsed_date = parse_datetime(date)
+        return date
 
-        if parsed_date is None:
-            parsed_date = datetime.strptime(date, "%Y-%m-%d %H:%M")
+    parsed_date = parse_datetime(date)
 
-    if timezone.is_naive(parsed_date):
-        parsed_date = timezone.make_aware(parsed_date)
+    if parsed_date is not None:
+        return parsed_date
 
-    return parsed_date
+    return datetime.strptime(date, "%Y-%m-%d %H:%M")
 
 
 @transaction.atomic
@@ -33,7 +26,8 @@ def create_order(
     username: str,
     date: str | datetime = None,
 ) -> Order:
-    user = User.objects.get(username=username)
+    user_model = get_user_model()
+    user = user_model.objects.get(username=username)
 
     order = Order.objects.create(user=user)
 
@@ -56,7 +50,7 @@ def create_order(
     return order
 
 
-def get_orders(username: str = None) -> QuerySet:
+def get_orders(username: str = None) -> QuerySet[Order]:
     queryset = Order.objects.all()
 
     if username is not None:
